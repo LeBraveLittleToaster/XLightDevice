@@ -1,6 +1,8 @@
 #ifndef CREDENTIALS_H
 #define CREDENTIALS_H
 
+#define DEVICE_MAC_ADDRESS "1234"
+
 #define WIFI_SSID "MyWiFiSSID"
 #define WIFI_PW "some_secret_password"
 

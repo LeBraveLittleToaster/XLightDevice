@@ -4,6 +4,7 @@
 #include "ledstrip_conf.h"
 #include "modes/SolidColorMode.h"
 #include "modes/RunningColorMode.h"
+#include "modes/ColorPulseMode.h"
 #include "modes/Mode.h"
 #include "modes/ModeManager.h"
 
@@ -19,9 +20,10 @@ extern "C"
 }
 #include <AsyncMqttClient.h>
 
-
 CRGB leds[NUM_LEDS];
 ModeManager modeM = ModeManager(leds);
+
+unsigned long lastTimeStampMillis = millis();
 
 AsyncMqttClient mqttClient;
 TimerHandle_t mqttReconnectTimer;
@@ -132,9 +134,10 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     Serial.println(error.f_str());
     return;
   }
-  Serial.print("  json[lol]: ");
-  const char* lol = doc["lol"];
-  Serial.println(lol);
+  else
+  {
+    modeM.setModeFromMessage(doc, leds);
+  }
 }
 
 void onMqttPublish(uint16_t packetId)
@@ -144,52 +147,51 @@ void onMqttPublish(uint16_t packetId)
   Serial.println(packetId);
 }
 
-void setupLED(){
-    FastLED.addLeds<WS2812B, DATA_PIN>(leds, NUM_LEDS);
-    FastLED.setBrightness(255);
-    
-    for(int i = 0; i < NUM_LEDS; i++){
-      leds[i] = CHSV(0,255,255);
-      FastLED.show();
-      delay(1000);
-    }
+void setupLED()
+{
+  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
+  FastLED.setBrightness(255);
+
+  for (int i = 0; i < NUM_LEDS; i++)
+  {
+    leds[i] = CHSV(0, 255, 255);
+    FastLED.show();
+    delay(1000);
+  }
+  modeM.setMode(new ColorPulseMode(128,128,128,128,40), leds);
 }
 
 void setup()
 {
   Serial.begin(9600);
   Serial.println("Starting ESP32");
-  Serial.println("PIN 5");
+  Serial.print("LED PIN: ");
+  Serial.println(DATA_PIN);
 
+  setupLED();
 
-  SolidColorMode* s_m = new SolidColorMode(0,255,255,255);
-  RunningColorMode* r_m = new RunningColorMode(0,255,255,255, 2);
+  /*
+  mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
+  wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
 
-  modeM.setMode(s_m);
-  modeM.tick();
-  modeM.setMode(r_m);
-  modeM.tick();
+  WiFi.onEvent(WiFiEvent);
 
-  //setupLED();
+  mqttClient.onConnect(onMqttConnect);
+  mqttClient.onDisconnect(onMqttDisconnect);
+  mqttClient.onSubscribe(onMqttSubscribe);
+  mqttClient.onUnsubscribe(onMqttUnsubscribe);
+  mqttClient.onMessage(onMqttMessage);
+  mqttClient.onPublish(onMqttPublish);
+  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
 
-
-  // mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
-  // wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
-
-  // WiFi.onEvent(WiFiEvent);
-
-  // mqttClient.onConnect(onMqttConnect);
-  // mqttClient.onDisconnect(onMqttDisconnect);
-  // mqttClient.onSubscribe(onMqttSubscribe);
-  // mqttClient.onUnsubscribe(onMqttUnsubscribe);
-  // mqttClient.onMessage(onMqttMessage);
-  // mqttClient.onPublish(onMqttPublish);
-  // mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-
-  // connectToWifi();
-  
+  connectToWifi();
+  */
 }
 
 void loop()
 {
+  unsigned long deltaTime = millis() - lastTimeStampMillis;
+  lastTimeStampMillis = millis();
+  
+  modeM.tick(deltaTime);
 }

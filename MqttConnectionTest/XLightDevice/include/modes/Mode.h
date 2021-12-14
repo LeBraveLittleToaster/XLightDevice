@@ -7,8 +7,8 @@ class Mode
 {
   public:
     Mode();
-    virtual ~Mode() = default;
-    virtual void execute(CRGB leds[]);
+    virtual void prepareOnce(CRGB leds[]);
+    virtual void execute(CRGB leds[], unsigned long deltaTime);
   private:
 };
 #endif

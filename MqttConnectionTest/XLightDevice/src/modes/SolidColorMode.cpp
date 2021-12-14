@@ -7,7 +7,7 @@ SolidColorMode::SolidColorMode(uint8_t h, uint8_t s, uint8_t v, uint8_t b){
     this->b = b;
 }
 
-void SolidColorMode::execute(CRGB leds[]){
+void SolidColorMode::execute(CRGB leds[], unsigned long deltaTime){
     Serial.println("+++++++++++++++");
     Serial.println("Solid Color mode set");
     Serial.println(h);
@@ -15,4 +15,8 @@ void SolidColorMode::execute(CRGB leds[]){
     Serial.println(v);
     Serial.println(b);
     Serial.println("+++++++++++++++");
+}
+
+void SolidColorMode::prepareOnce(CRGB leds[]){
+
 }

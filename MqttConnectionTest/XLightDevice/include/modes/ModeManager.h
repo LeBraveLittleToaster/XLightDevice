@@ -3,14 +3,16 @@
 
 #include <FastLED.h>
 #include <queue>
+#include <ArduinoJson.h>
 
 class ModeManager
 {
   CRGB leds[];
   public:
     ModeManager(CRGB leds[]);
-    void tick();
-    void setMode(Mode* mode);
+    void tick(unsigned long deltaTime);
+    void setMode(Mode* mode, CRGB leds[]);
+    void setModeFromMessage(StaticJsonDocument<96> doc, CRGB leds[]);
   private:
     Mode* curMode;
 };
