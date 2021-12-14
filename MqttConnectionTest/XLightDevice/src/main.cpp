@@ -1,5 +1,12 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <FastLED.h>
+#include "ledstrip_conf.h"
+#include "modes/SolidColorMode.h"
+#include "modes/RunningColorMode.h"
+#include "modes/ColorPulseMode.h"
+#include "modes/Mode.h"
+#include "modes/ModeManager.h"
 
 /*
 This example uses FreeRTOS softwaretimers as there is no built-in Ticker library
@@ -12,6 +19,11 @@ extern "C"
 #include "freertos/timers.h"
 }
 #include <AsyncMqttClient.h>
+
+CRGB leds[NUM_LEDS];
+ModeManager modeM = ModeManager(leds);
+
+unsigned long lastTimeStampMillis = millis();
 
 AsyncMqttClient mqttClient;
 TimerHandle_t mqttReconnectTimer;
@@ -122,9 +134,10 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     Serial.println(error.f_str());
     return;
   }
-  Serial.print("  json[lol]: ");
-  const char* lol = doc["lol"];
-  Serial.println(lol);
+  else
+  {
+    modeM.setModeFromMessage(doc, leds);
+  }
 }
 
 void onMqttPublish(uint16_t packetId)
@@ -134,12 +147,30 @@ void onMqttPublish(uint16_t packetId)
   Serial.println(packetId);
 }
 
+void setupLED()
+{
+  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
+  FastLED.setBrightness(255);
+
+  for (int i = 0; i < NUM_LEDS; i++)
+  {
+    leds[i] = CHSV(0, 255, 255);
+    FastLED.show();
+    delay(1000);
+  }
+  modeM.setMode(new ColorPulseMode(128,128,128,128,40), leds);
+}
+
 void setup()
 {
   Serial.begin(9600);
-  Serial.println();
-  Serial.println();
+  Serial.println("Starting ESP32");
+  Serial.print("LED PIN: ");
+  Serial.println(DATA_PIN);
 
+  setupLED();
+
+  /*
   mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
   wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
 
@@ -154,8 +185,13 @@ void setup()
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
 
   connectToWifi();
+  */
 }
 
 void loop()
 {
+  unsigned long deltaTime = millis() - lastTimeStampMillis;
+  lastTimeStampMillis = millis();
+  
+  modeM.tick(deltaTime);
 }
