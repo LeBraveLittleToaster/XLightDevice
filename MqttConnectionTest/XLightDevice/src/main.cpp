@@ -1,5 +1,11 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <FastLED.h>
+#include "ledstrip_conf.h"
+#include "modes/SolidColorMode.h"
+#include "modes/RunningColorMode.h"
+#include "modes/Mode.h"
+#include "modes/ModeManager.h"
 
 /*
 This example uses FreeRTOS softwaretimers as there is no built-in Ticker library
@@ -12,6 +18,10 @@ extern "C"
 #include "freertos/timers.h"
 }
 #include <AsyncMqttClient.h>
+
+
+CRGB leds[NUM_LEDS];
+ModeManager modeM = ModeManager(leds);
 
 AsyncMqttClient mqttClient;
 TimerHandle_t mqttReconnectTimer;
@@ -134,26 +144,50 @@ void onMqttPublish(uint16_t packetId)
   Serial.println(packetId);
 }
 
+void setupLED(){
+    FastLED.addLeds<WS2812B, DATA_PIN>(leds, NUM_LEDS);
+    FastLED.setBrightness(255);
+    
+    for(int i = 0; i < NUM_LEDS; i++){
+      leds[i] = CHSV(0,255,255);
+      FastLED.show();
+      delay(1000);
+    }
+}
+
 void setup()
 {
   Serial.begin(9600);
-  Serial.println();
-  Serial.println();
+  Serial.println("Starting ESP32");
+  Serial.println("PIN 5");
 
-  mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
-  wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
 
-  WiFi.onEvent(WiFiEvent);
+  SolidColorMode* s_m = new SolidColorMode(0,255,255,255);
+  RunningColorMode* r_m = new RunningColorMode(0,255,255,255, 2);
 
-  mqttClient.onConnect(onMqttConnect);
-  mqttClient.onDisconnect(onMqttDisconnect);
-  mqttClient.onSubscribe(onMqttSubscribe);
-  mqttClient.onUnsubscribe(onMqttUnsubscribe);
-  mqttClient.onMessage(onMqttMessage);
-  mqttClient.onPublish(onMqttPublish);
-  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+  modeM.setMode(s_m);
+  modeM.tick();
+  modeM.setMode(r_m);
+  modeM.tick();
 
-  connectToWifi();
+  //setupLED();
+
+
+  // mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
+  // wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
+
+  // WiFi.onEvent(WiFiEvent);
+
+  // mqttClient.onConnect(onMqttConnect);
+  // mqttClient.onDisconnect(onMqttDisconnect);
+  // mqttClient.onSubscribe(onMqttSubscribe);
+  // mqttClient.onUnsubscribe(onMqttUnsubscribe);
+  // mqttClient.onMessage(onMqttMessage);
+  // mqttClient.onPublish(onMqttPublish);
+  // mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+
+  // connectToWifi();
+  
 }
 
 void loop()
